@@ -1,5 +1,6 @@
 package com.example.bluetooth1;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -14,6 +15,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -27,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
     public static final int ENABLE_BT_REQUEST = 1;
 
-    private BluetoothAdapter myBtAdapter;
+    public BluetoothAdapter myBtAdapter;
     private Button btOnBtn, btOffBtn;
     private RecyclerView pairedDevices_view;
     private RecyclerView discoveredDevices_view;
@@ -41,18 +44,27 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Get a reference to some of the views for later use
-        btOnBtn = findViewById(R.id.bt_on_btn);
-        btOffBtn = findViewById(R.id.bt_off_btn);
-        pairedDevices_view = findViewById(R.id.paired_devices);
-        discoveredDevices_view = findViewById(R.id.discovered_devices);
-
+        findViewsbyIds(); // Get needed View references
         // Initialize a reference to the Bluetooth Adapter
         myBtAdapter = BluetoothAdapter.getDefaultAdapter();
 
         // initialize discovery settings
         setupDiscoverListener();
         setupDiscoverableListener();
+
+        // Initialize the message handling thread
+        MessageThread mthread = new MessageThread();
+        mthread.start();
+
+
+    }
+
+    private void findViewsbyIds() {
+        // Get a reference to some of the views for later use
+        btOnBtn = findViewById(R.id.bt_on_btn);
+        btOffBtn = findViewById(R.id.bt_off_btn);
+        pairedDevices_view = findViewById(R.id.paired_devices);
+        discoveredDevices_view = findViewById(R.id.discovered_devices);
     }
 
     /**
@@ -233,6 +245,42 @@ public class MainActivity extends AppCompatActivity {
                 toast("Bluetooth enabling has been cancelled");
             }
         }
+    }
+
+    Handler messageHandler = new Handler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(@NonNull Message msg) {
+            // Add code to update the view here
+            //myTextView.setText();
+            Log.d(LOG_TAG, String.valueOf(msg.arg1));
+            toast(String.valueOf(msg.arg1));
+            return false;
+        }
+    });
+
+    private class MessageThread extends Thread {
+        @Override
+        public void run() {
+            for (int i=0; i<50; i++) {
+                Message message = Message.obtain();
+                message.arg1 = i;
+                messageHandler.sendMessage(message);
+                try {
+                    sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    /**
+     * Launches the ChatActivity. Does not pass data or expect result.
+     * @param view - the view that called this method
+     */
+    public void startChat(View view) {
+        Intent intent = new Intent(this, ChatActivity.class);
+        startActivity(intent);
     }
 
     /**
