@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Bluetooth1</string>
+    <string name="bt_on_btn_txt">Bluetooth on</string>
+    <string name="bt_off_btn_text">Bluetooth off</string>
+    <string name="paired_devices_btn_text">Show paired devices</string>
+    <string name="device_textview" />
+    <string name="discover_btn_text">Discover devices</string>
+    <string name="enable_discoverable_button_txt">Enable Discoverable</string>
+</resources>
