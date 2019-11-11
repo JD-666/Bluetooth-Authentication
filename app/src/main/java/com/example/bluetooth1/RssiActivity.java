@@ -9,7 +9,6 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
-import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
@@ -19,9 +18,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
-import android.widget.Adapter;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,24 +29,21 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class ChatActivity extends AppCompatActivity {
+public class RssiActivity extends AppCompatActivity {
 
-    private static final String LOG_TAG = ChatActivity.class.getSimpleName();
+    private static final String LOG_TAG = RssiActivity.class.getSimpleName();
 
-    // Stateful attributes needed
+    // Statefull attributes needed
     private BluetoothAdapter myBtAdapter;
     Set<BluetoothDevice> btDevices;
     private ArrayList<BluetoothDevice> pairedDevices = new ArrayList<>();
     private RecyclerView mRecyclerView;
-    private TextView chatStatusView;
-    private EditText sendMsgView;
-    private ArrayList<String> msgs = new ArrayList<>();
+    private TextView rssiView;
+    private TextView dstView;
+    private TextView connStatusView;
 
     // Threads
-    private SendReceive sendReceiveThread;
     private Timer rssiTimer;
-
-    MsgListAdapter msgAdapter;
 
     BluetoothGatt btGatt;
 
@@ -63,35 +56,32 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_chat);
+        setContentView(R.layout.activity_rssi);
 
-        findViewsByIds(); // Get needed View references
+        findViewbyIds(); // get needed view references
         myBtAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        // Establish a msg adapter to work with the recyclerview
-        msgAdapter= new MsgListAdapter(getApplicationContext(), msgs);
-        setRecyclerViewAdapter(msgAdapter);
-
-        //Intent intent = getIntent(); // Get intent obj from whoever activated us
-
     }
 
-    private void setRecyclerViewAdapter(RecyclerView.Adapter a) {
-        // Connect the adapter the recycler view
-        mRecyclerView.setAdapter(a);
-        // Give the recycler view a default layout manager
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
-    }
-
-    private void findViewsByIds() {
-        // Get a reference to some of the views for later use
-        mRecyclerView = findViewById(R.id.msg_recycler);
-        chatStatusView = findViewById(R.id.chat_status);
-        sendMsgView = findViewById(R.id.send_msg_edittext);
+    private void findViewbyIds() {
+        mRecyclerView = findViewById(R.id.rssi_recycler);
+        rssiView = findViewById(R.id.rssi_val);
+        dstView = findViewById(R.id.dst_val);
     }
 
     private void toast(String txt) {
         Toast.makeText(getApplicationContext(), txt, Toast.LENGTH_LONG).show();
+    }
+
+    private void hideRecycler() {
+        mRecyclerView.setVisibility(View.GONE);
+        rssiView.setVisibility(View.VISIBLE);
+        dstView.setVisibility(View.VISIBLE);
+    }
+
+    private void showRecyclerView() {
+        mRecyclerView.setVisibility(View.VISIBLE);
+        rssiView.setVisibility(View.GONE);
+        dstView.setVisibility(View.GONE);
     }
 
     public void showPairedDevices(View view) {
@@ -109,7 +99,10 @@ public class ChatActivity extends AppCompatActivity {
         }
         // Create an adapter and supply the data to be displayed
         DeviceListAdapter adapter = new DeviceListAdapter(this, pairedDevices);
-        setRecyclerViewAdapter(adapter);
+        // Connect the adapter the recycler view
+        mRecyclerView.setAdapter(adapter);
+        // Give the recycler view a default layout manager
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 
     /**
@@ -129,14 +122,11 @@ public class ChatActivity extends AppCompatActivity {
         // TODO consider some flag to keep track if server is running to so we don't spawn multiple instances
         ServerClass serverChat = new ServerClass();
         serverChat.start();
-        setRecyclerViewAdapter(msgAdapter);
     }
 
     public void startClientChat(BluetoothDevice device) {
         toast(device.getName());
         ClientClass client = new ClientClass(device);
-        setRecyclerViewAdapter(msgAdapter);
-        msgAdapter.notifyDataSetChanged();
         client.start();
 
         btGatt = device.connectGatt(this, false, btGattCallback);
@@ -147,10 +137,13 @@ public class ChatActivity extends AppCompatActivity {
          */
     }
 
+    /**
+     * This is a callback for all Gatt activities
+     */
     private final BluetoothGattCallback btGattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-            if(newState == BluetoothProfile.STATE_CONNECTED) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
                 TimerTask task = new TimerTask() {
                     @Override
                     public void run() {
@@ -161,14 +154,7 @@ public class ChatActivity extends AppCompatActivity {
                 rssiTimer.schedule(task, 1000, 1000);
             }
         }
-
-        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
-            Log.d(LOG_TAG, String.valueOf(rssi));
-            //msgs.add(String.valueOf(rssi));
-        }
     };
-
-
 
     // This Handler acts as a mechanism for threads to send messages to this main activity.
     // It is an event-driven handler that activated when a thread uses handler.sendMesage().
@@ -177,46 +163,34 @@ public class ChatActivity extends AppCompatActivity {
         public boolean handleMessage(@NonNull Message msg) {
             switch (msg.what) {
                 case STATE_LISTENING:
-                    chatStatusView.setText("Listening");
+                    connStatusView.setText("Listening");
                     Log.d(LOG_TAG, "LISTENING");
                     break;
                 case STATE_CONNECTING:
-                    chatStatusView.setText("Connecting");
+                    connStatusView.setText("Connecting");
                     Log.d(LOG_TAG, "CONNECTING");
                     break;
                 case STATE_CONNECTED:
-                    chatStatusView.setText("Connected");
+                    connStatusView.setText("Connected");
                     Log.d(LOG_TAG, "CONNECTED");
                     break;
                 case STATE_CONNECTION_FAILED:
-                    chatStatusView.setText("Connection Failed");
+                    connStatusView.setText("Connection Failed");
                     Log.d(LOG_TAG, "CONNECTION FAILED");
                     break;
                 case STATE_MESSAGE_RECEIVED:
+                    // TODO remove this if we dont plan to send messages.
                     Log.d(LOG_TAG, "MESSAGE RECEIVED");
                     byte[] readBuff = (byte[]) msg.obj;
                     String tempMsg = new String(readBuff, 0, msg.arg1);
                     // now add this msg to recycler view
-                    msgs.add(tempMsg);
-                    msgAdapter.notifyDataSetChanged();
+                    //msgs.add(tempMsg);
+                    //msgAdapter.notifyDataSetChanged();
                     break;
             }
             return true;
         }
     });
-
-    public void sendTextMsg(View view) {
-        String m = String.valueOf(sendMsgView.getText());
-        sendMsgView.setText("");
-        msgs.add(m);
-        msgAdapter.notifyDataSetChanged();
-        sendReceiveThread.write(m.getBytes());
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-    }
 
     //----------------------------------------------------------------------------------------------
     private class ServerClass extends Thread {
@@ -251,8 +225,9 @@ public class ChatActivity extends AppCompatActivity {
                     message.what = STATE_CONNECTED; // look at video 10/11
                     messageHandler.sendMessage(message);
 
-                    sendReceiveThread = new SendReceive(socket);
-                    sendReceiveThread.start();
+                    //sendReceiveThread = new ChatActivity.SendReceive(socket);
+                    //sendReceiveThread.start();
+                    // TODO do i even need a socket connection at all?
                     break;
                 }
             }
@@ -280,8 +255,9 @@ public class ChatActivity extends AppCompatActivity {
                 message.what = STATE_CONNECTED;
                 messageHandler.sendMessage(message);
 
-                sendReceiveThread = new SendReceive(socket);
-                sendReceiveThread.start();
+                // TODO do I even need a socket connection?
+                //sendReceiveThread = new .SendReceive(socket);
+                //sendReceiveThread.start();
             } catch (IOException e) {
                 e.printStackTrace();
                 Message message = Message.obtain();
@@ -290,7 +266,6 @@ public class ChatActivity extends AppCompatActivity {
             }
         }
     }
-    //----------------------------------------------------------------------------------------------
 
     private class SendReceive extends Thread {
         private final BluetoothSocket btSocket;
@@ -307,7 +282,7 @@ public class ChatActivity extends AppCompatActivity {
             }
         }
 
-       public void run() {
+        public void run() {
             byte[] buffer = new byte[1024];
             int bytes;
             while(true) {
@@ -320,15 +295,17 @@ public class ChatActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-       }
-       public void write(byte[] bytes) {
+        }
+        public void write(byte[] bytes) {
             try {
                 outputStream.write(bytes);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-       }
+        }
     }
     //----------------------------------------------------------------------------------------------
+
+
 
 }

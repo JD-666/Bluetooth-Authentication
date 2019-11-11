@@ -6,10 +6,16 @@
     <string name="device_textview" />
     <string name="discover_btn_text">Discover devices</string>
     <string name="enable_discoverable_button_txt">Enable Discoverable</string>
-    <string name="start_chat_btn_txt">Chat Activity</string>
+    <string name="start_chat_btn_txt">Chat</string>
     <string name="send_msg_btn_text">send</string>
     <string name="send_msg_edittext_text">Enter message...</string>
     <string name="listen_btn_txt">Listen</string>
     <string name="connect_btn_txt">Connect</string>
     <string name="chat_status_txt">chat status</string>
+    <string name="be_server_btn_txt">Server</string>
+    <string name="be_client_btn_txt">Client</string>
+    <string name="conn_status_text">connection status</string>
+    <string name="rssi_val_txt">99</string>
+    <string name="dst_val_txt">99</string>
+    <string name="rssi_activity_btn_txt">Proximity Authentication</string>
 </resources>

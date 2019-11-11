@@ -1,6 +1,5 @@
 package com.example.bluetooth1;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -10,23 +9,16 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothServerSocket;
-import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.Toast;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Set;
 import java.util.UUID;
 
@@ -36,9 +28,6 @@ public class MainActivity extends AppCompatActivity {
     public static final String APP_NAME = "Bluetooth1";
     public static final UUID APP_UUID = UUID.fromString("cb0b5df3-1897-4218-bafc-f39faae2f3d9");
     public static final int ENABLE_BT_REQUEST = 1;
-    //public static final String EXTRA_CHAT_TYPE = "com.example.bluetooth1.extra.CHAT_TYPE";
-    //public static final int CHAT_SERVER = 1;
-    //public static final int CHAT_CLIENT = 2;
 
     public BluetoothAdapter myBtAdapter;
     private RecyclerView pairedDevices_view;
@@ -60,11 +49,6 @@ public class MainActivity extends AppCompatActivity {
         // initialize discovery settings
         setupDiscoverListener();
         setupDiscoverableListener();
-
-        // Initialize the message handling thread
-        //MessageThread mthread = new MessageThread();
-        //mthread.start();
-
     }
 
     private void findViewsByIds() {
@@ -260,6 +244,15 @@ public class MainActivity extends AppCompatActivity {
      */
     public void beginChatActivity(View view) {
         Intent intent = new Intent(this, ChatActivity.class);
+        startActivity(intent);
+    }
+
+    /**
+     * Launches the ChatActivity. Does not pass data or expect result.
+     * @param view - the view that called this method
+     */
+    public void beginRssiActivity(View view) {
+        Intent intent = new Intent(this, RssiActivity.class);
         startActivity(intent);
     }
 
