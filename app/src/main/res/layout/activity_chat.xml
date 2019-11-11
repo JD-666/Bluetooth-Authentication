@@ -12,7 +12,8 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:text="TextView"
+        android:hint="@string/send_msg_edittext_text"
+        android:inputType="textShortMessage"
         app:layout_constraintBaseline_toBaselineOf="@+id/send_msg_btn"
         app:layout_constraintEnd_toStartOf="@+id/send_msg_btn"
         app:layout_constraintStart_toStartOf="parent" />
@@ -23,15 +24,52 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
-        android:text="Button"
+        android:onClick="sendTextMsg"
+        android:text="@string/send_msg_btn_text"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/msg_recycler"
-        android:layout_width="456dp"
-        android:layout_height="586dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
         android:layout_marginBottom="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/send_msg_btn"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintBottom_toTopOf="@+id/send_msg_edittext"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/connect_btn" />
+
+    <Button
+        android:id="@+id/listen_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:onClick="enableDiscoverable"
+        android:text="@string/listen_btn_txt"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/connect_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:onClick="showPairedDevices"
+        android:text="@string/connect_btn_txt"
+        app:layout_constraintBaseline_toBaselineOf="@+id/listen_btn"
+        app:layout_constraintStart_toEndOf="@+id/listen_btn" />
+
+    <TextView
+        android:id="@+id/chat_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:text="@string/chat_status_txt"
+        app:layout_constraintBaseline_toBaselineOf="@+id/connect_btn"
+        app:layout_constraintStart_toEndOf="@+id/connect_btn" />
 </androidx.constraintlayout.widget.ConstraintLayout>

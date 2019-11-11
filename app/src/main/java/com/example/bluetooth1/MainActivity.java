@@ -10,6 +10,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothServerSocket;
+import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -22,16 +24,23 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Set;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
+    public static final String APP_NAME = "Bluetooth1";
+    public static final UUID APP_UUID = UUID.fromString("cb0b5df3-1897-4218-bafc-f39faae2f3d9");
     public static final int ENABLE_BT_REQUEST = 1;
+    //public static final String EXTRA_CHAT_TYPE = "com.example.bluetooth1.extra.CHAT_TYPE";
+    //public static final int CHAT_SERVER = 1;
+    //public static final int CHAT_CLIENT = 2;
 
     public BluetoothAdapter myBtAdapter;
-    private Button btOnBtn, btOffBtn;
     private RecyclerView pairedDevices_view;
     private RecyclerView discoveredDevices_view;
     private BroadcastReceiver discoverReceiver;
@@ -44,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        findViewsbyIds(); // Get needed View references
+        findViewsByIds(); // Get needed View references
         // Initialize a reference to the Bluetooth Adapter
         myBtAdapter = BluetoothAdapter.getDefaultAdapter();
 
@@ -53,16 +62,13 @@ public class MainActivity extends AppCompatActivity {
         setupDiscoverableListener();
 
         // Initialize the message handling thread
-        MessageThread mthread = new MessageThread();
-        mthread.start();
-
+        //MessageThread mthread = new MessageThread();
+        //mthread.start();
 
     }
 
-    private void findViewsbyIds() {
+    private void findViewsByIds() {
         // Get a reference to some of the views for later use
-        btOnBtn = findViewById(R.id.bt_on_btn);
-        btOffBtn = findViewById(R.id.bt_off_btn);
         pairedDevices_view = findViewById(R.id.paired_devices);
         discoveredDevices_view = findViewById(R.id.discovered_devices);
     }
@@ -115,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         // Create an adapter and supply the data to be displayed
-        DeviceListAdapter adapter = new DeviceListAdapter(this, pairedDevices);
+        MsgListAdapter adapter = new MsgListAdapter(this, pairedDevices);
         // Connect the adapter the recycler view
         pairedDevices_view.setAdapter(adapter);
         // Give the recycler view a default layout manager
@@ -168,7 +174,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupDiscoverListener() {
         Log.d(LOG_TAG,"setupDiscoverListener");
         // Create an adapter and supply the data to be displayed
-        final DeviceListAdapter adapter = new DeviceListAdapter(this, discoveredDevices);
+        final MsgListAdapter adapter = new MsgListAdapter(this, discoveredDevices);
         // Connect the adapter the recycler view
         discoveredDevices_view.setAdapter(adapter);
         // Give the recycler view a default layout manager
@@ -182,10 +188,11 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("MainActivity","onReceive BluetoothDevice.ACTION_FOUND");
                     BluetoothDevice d = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     String name = d.getName();
+                    String rssi = String.valueOf(intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE));
                     if (name == null) {
-                        discoveredDevices.add(d.getAddress());
+                        discoveredDevices.add(d.getAddress() + " RSSI: " + rssi);
                     } else {
-                        discoveredDevices.add(d.getAddress() + " " + name);
+                        discoveredDevices.add(d.getAddress() + " " + name + " RSSI: " + rssi);
                     }
                     adapter.notifyDataSetChanged();
                 }
@@ -247,38 +254,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    Handler messageHandler = new Handler(new Handler.Callback() {
-        @Override
-        public boolean handleMessage(@NonNull Message msg) {
-            // Add code to update the view here
-            //myTextView.setText();
-            Log.d(LOG_TAG, String.valueOf(msg.arg1));
-            toast(String.valueOf(msg.arg1));
-            return false;
-        }
-    });
-
-    private class MessageThread extends Thread {
-        @Override
-        public void run() {
-            for (int i=0; i<50; i++) {
-                Message message = Message.obtain();
-                message.arg1 = i;
-                messageHandler.sendMessage(message);
-                try {
-                    sleep(500);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-
     /**
      * Launches the ChatActivity. Does not pass data or expect result.
      * @param view - the view that called this method
      */
-    public void startChat(View view) {
+    public void beginChatActivity(View view) {
         Intent intent = new Intent(this, ChatActivity.class);
         startActivity(intent);
     }
@@ -298,4 +278,5 @@ public class MainActivity extends AppCompatActivity {
         }
         super.onDestroy();
     }
+
 }

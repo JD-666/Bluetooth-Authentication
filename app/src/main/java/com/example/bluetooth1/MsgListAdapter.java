@@ -1,6 +1,5 @@
 package com.example.bluetooth1;
 
-import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
 import android.view.LayoutInflater;
@@ -15,10 +14,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 
-public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.DeviceViewHolder> {
+public class MsgListAdapter extends RecyclerView.Adapter<MsgListAdapter.DeviceViewHolder> {
 
     private LayoutInflater inflater;
-    private List<BluetoothDevice> deviceList;
+    private List<String> deviceList;
     public Context parent_context;
 
     /**
@@ -26,7 +25,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
      * @param context
      * @param deviceList
      */
-    public DeviceListAdapter(Context context, List<BluetoothDevice> deviceList) {
+    public MsgListAdapter(Context context, List<String> deviceList) {
         this.inflater = LayoutInflater.from(context);
         this.deviceList = deviceList;
         this.parent_context = context;
@@ -54,7 +53,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
     @Override
     public void onBindViewHolder(@NonNull DeviceViewHolder holder, int position) {
         // Retrieve the data for that position
-        String current = deviceList.get(position).getName();
+        String current = deviceList.get(position);
         // Add the data to the view
         holder.deviceItemView.setText(current);
     }
@@ -70,9 +69,9 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
     public class DeviceViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
 
         TextView deviceItemView;
-        DeviceListAdapter adapter;
+        MsgListAdapter adapter;
 
-        DeviceViewHolder(View itemView, DeviceListAdapter adapter) {
+        DeviceViewHolder(View itemView, MsgListAdapter adapter) {
             super(itemView);
             this.deviceItemView = itemView.findViewById(R.id.bt_item);
             this.adapter = adapter;
@@ -84,9 +83,6 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
         public void onClick(View view) {
             // TODO pass device info so ChatActivity can connect
             deviceItemView.setText("Clicked!" + deviceItemView.getText());
-            int pos = this.getLayoutPosition();
-            BluetoothDevice d = adapter.deviceList.get(pos);
-            ((ChatActivity) parent_context).startClientChat(d);
         }
 
 
