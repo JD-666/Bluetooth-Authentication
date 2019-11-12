@@ -82,11 +82,16 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
 
         @Override
         public void onClick(View view) {
-            // TODO pass device info so ChatActivity can connect
             deviceItemView.setText("Clicked!" + deviceItemView.getText());
-            int pos = this.getLayoutPosition();
-            BluetoothDevice d = adapter.deviceList.get(pos);
-            ((ChatActivity) parent_context).startClientChat(d);
+            if (parent_context instanceof RssiActivity) {
+                int pos = this.getLayoutPosition();
+                BluetoothDevice d = adapter.deviceList.get(pos);
+                ((RssiActivity) parent_context).startClientChat(d);
+            } else if (parent_context instanceof ChatActivity) {
+                int pos = this.getLayoutPosition();
+                BluetoothDevice d = adapter.deviceList.get(pos);
+                ((ChatActivity) parent_context).startClientChat(d);
+            }
         }
 
 

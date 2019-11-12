@@ -2,6 +2,7 @@ package com.example.bluetooth1;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -18,6 +19,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,10 +39,14 @@ public class RssiActivity extends AppCompatActivity {
     private BluetoothAdapter myBtAdapter;
     Set<BluetoothDevice> btDevices;
     private ArrayList<BluetoothDevice> pairedDevices = new ArrayList<>();
+    private SendReceive sendReceiveThread;
     private RecyclerView mRecyclerView;
     private TextView rssiView;
     private TextView dstView;
     private TextView connStatusView;
+    private TextView rssiLabel;
+    private TextView dstLabel;
+    private TextView resourceLabel;
 
     // Threads
     private Timer rssiTimer;
@@ -66,6 +72,10 @@ public class RssiActivity extends AppCompatActivity {
         mRecyclerView = findViewById(R.id.rssi_recycler);
         rssiView = findViewById(R.id.rssi_val);
         dstView = findViewById(R.id.dst_val);
+        connStatusView = findViewById(R.id.conn_status);
+        rssiLabel = findViewById(R.id.rssi_textview);
+        dstLabel = findViewById(R.id.dst_textview);
+        resourceLabel = findViewById(R.id.resource_textview);
     }
 
     private void toast(String txt) {
@@ -76,14 +86,21 @@ public class RssiActivity extends AppCompatActivity {
         mRecyclerView.setVisibility(View.GONE);
         rssiView.setVisibility(View.VISIBLE);
         dstView.setVisibility(View.VISIBLE);
+        rssiLabel.setVisibility(View.VISIBLE);
+        dstLabel.setVisibility(View.VISIBLE);
+        resourceLabel.setVisibility(View.VISIBLE);
     }
 
     private void showRecyclerView() {
         mRecyclerView.setVisibility(View.VISIBLE);
         rssiView.setVisibility(View.GONE);
         dstView.setVisibility(View.GONE);
+        rssiLabel.setVisibility(View.GONE);
+        dstLabel.setVisibility(View.GONE);
+        resourceLabel.setVisibility(View.GONE);
     }
 
+    // This method is the callback for the client button to select a device
     public void showPairedDevices(View view) {
         if (!myBtAdapter.isEnabled()) { // If BlueTooth is off then return
             toast("Please enable Bluetooth");
@@ -97,6 +114,7 @@ public class RssiActivity extends AppCompatActivity {
                 pairedDevices.add(device);
             }
         }
+        showRecyclerView(); // show devices on screen
         // Create an adapter and supply the data to be displayed
         DeviceListAdapter adapter = new DeviceListAdapter(this, pairedDevices);
         // Connect the adapter the recycler view
@@ -126,11 +144,12 @@ public class RssiActivity extends AppCompatActivity {
 
     public void startClientChat(BluetoothDevice device) {
         toast(device.getName());
+        hideRecycler();
         ClientClass client = new ClientClass(device);
         client.start();
 
+
         btGatt = device.connectGatt(this, false, btGattCallback);
-        btGatt.readRemoteRssi();
 
         /* TODO consider making a flag: CLIENT_RUNNING = true. So that new clicks do nothing,
            TODO if no client is running then start it and switch flag.
@@ -143,7 +162,7 @@ public class RssiActivity extends AppCompatActivity {
     private final BluetoothGattCallback btGattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
+            if(newState == BluetoothProfile.STATE_CONNECTED) {
                 TimerTask task = new TimerTask() {
                     @Override
                     public void run() {
@@ -154,7 +173,46 @@ public class RssiActivity extends AppCompatActivity {
                 rssiTimer.schedule(task, 1000, 1000);
             }
         }
+
+        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
+            Log.d(LOG_TAG, String.valueOf(rssi));
+            setDistanceView(rssi);
+            setResourceLabel(rssi);
+            rssiView.setText(String.valueOf(rssi));
+        }
     };
+
+    private void setDistanceView(int rssi) {
+        // compute distance
+        String dst;
+        if (rssi > -5) {
+            dst = "<3m";
+        } else if (rssi > -10) {
+            dst = "<5m";
+        } else if (rssi > -15) {
+            dst = "<8m";
+        } else if (rssi > -20) {
+            dst = "<10m";
+        } else if (rssi > -25) {
+            dst = "<12m";
+        } else if (rssi > -30) {
+            dst = "<14m";
+        } else {
+            dst = ">14m";
+        }
+        dstView.setText(dst);
+    }
+
+    private void setResourceLabel(int rssi) {
+        if (rssi == 0) {
+            resourceLabel.setText(R.string.resource_unlocked);
+            resourceLabel.setTextColor(ContextCompat.getColor(this, R.color.colorUnlocked));
+        } else {
+            resourceLabel.setText(R.string.resource_locked);
+            resourceLabel.setTextColor(ContextCompat.getColor(this, R.color.colorLocked));
+        }
+    }
+
 
     // This Handler acts as a mechanism for threads to send messages to this main activity.
     // It is an event-driven handler that activated when a thread uses handler.sendMesage().
@@ -179,18 +237,31 @@ public class RssiActivity extends AppCompatActivity {
                     Log.d(LOG_TAG, "CONNECTION FAILED");
                     break;
                 case STATE_MESSAGE_RECEIVED:
-                    // TODO remove this if we dont plan to send messages.
                     Log.d(LOG_TAG, "MESSAGE RECEIVED");
                     byte[] readBuff = (byte[]) msg.obj;
-                    String tempMsg = new String(readBuff, 0, msg.arg1);
-                    // now add this msg to recycler view
-                    //msgs.add(tempMsg);
-                    //msgAdapter.notifyDataSetChanged();
+                    // Message is received but we don't do anything with it.
                     break;
             }
             return true;
         }
     });
+
+/*
+    public void sendTextMsg(View view) {
+        //TODO this never gets called because no send button, no callback
+        //String m = String.valueOf(sendMsgView.getText());
+        //sendMsgView.setText("");
+        //msgs.add(m);
+        //msgAdapter.notifyDataSetChanged();
+        //sendReceiveThread.write(m.getBytes());
+    }
+ */
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
 
     //----------------------------------------------------------------------------------------------
     private class ServerClass extends Thread {
@@ -225,9 +296,8 @@ public class RssiActivity extends AppCompatActivity {
                     message.what = STATE_CONNECTED; // look at video 10/11
                     messageHandler.sendMessage(message);
 
-                    //sendReceiveThread = new ChatActivity.SendReceive(socket);
-                    //sendReceiveThread.start();
-                    // TODO do i even need a socket connection at all?
+                    sendReceiveThread = new SendReceive(socket);
+                    sendReceiveThread.start();
                     break;
                 }
             }
@@ -239,34 +309,40 @@ public class RssiActivity extends AppCompatActivity {
         private BluetoothDevice device;
         private BluetoothSocket socket;
 
-        ClientClass(BluetoothDevice device) {
-            this.device = device;
-            try {
-                socket = this.device.createRfcommSocketToServiceRecord(MainActivity.APP_UUID);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        public void run() {
-            try {
-                socket.connect();
-                Message message = Message.obtain();
-                message.what = STATE_CONNECTED;
-                messageHandler.sendMessage(message);
-
-                // TODO do I even need a socket connection?
-                //sendReceiveThread = new .SendReceive(socket);
-                //sendReceiveThread.start();
-            } catch (IOException e) {
-                e.printStackTrace();
-                Message message = Message.obtain();
-                message.what = STATE_CONNECTION_FAILED;
-                messageHandler.sendMessage(message);
-            }
+    ClientClass(BluetoothDevice device) {
+        this.device = device;
+        try {
+            socket = this.device.createRfcommSocketToServiceRecord(MainActivity.APP_UUID);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
+    public void run() {
+        try {
+            socket.connect();
+            Message message = Message.obtain();
+            message.what = STATE_CONNECTED;
+            messageHandler.sendMessage(message);
+
+            sendReceiveThread = new SendReceive(socket);
+            sendReceiveThread.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Message message = Message.obtain();
+            message.what = STATE_CONNECTION_FAILED;
+            messageHandler.sendMessage(message);
+        }
+    }
+}
+//----------------------------------------------------------------------------------------------
+
+    /**
+     * This class handles socket connections for the bluetooth connection.
+     * Note we never call it's write message because we don't use the connection to send data.
+     * Instead we only maintain socket connections to keep the connection open, so we can
+     * Monitor the RSSI over the channel.
+     */
     private class SendReceive extends Thread {
         private final BluetoothSocket btSocket;
         private InputStream inputStream;

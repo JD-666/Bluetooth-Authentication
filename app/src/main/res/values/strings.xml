@@ -18,4 +18,8 @@
     <string name="rssi_val_txt">99</string>
     <string name="dst_val_txt">99</string>
     <string name="rssi_activity_btn_txt">Proximity Authentication</string>
+    <string name="dst_textview_txt">distance est.</string>
+    <string name="rssi_textview_txt">channel RSSI</string>
+    <string name="resource_locked">locked</string>
+    <string name="resource_unlocked">unlocked</string>
 </resources>
