@@ -2,7 +2,13 @@
 <resources>
     <color name="colorPrimary">#008577</color>
     <color name="colorPrimaryDark">#00574B</color>
+    <color name="colorPrimaryLight">#00574B</color>
     <color name="colorAccent">#D81B60</color>
     <color name="colorLocked">@android:color/holo_red_dark</color>
     <color name="colorUnlocked">@android:color/holo_green_dark</color>
+
+    <color name="AuthyPrimary">#f4131e</color>
+    <color name="AuthyPrimaryDark">#135af4</color>
+    <color name="AuthyPrimaryLight">#00574B</color>
+    <color name="AuthyAccent">#D81B60</color>
 </resources>

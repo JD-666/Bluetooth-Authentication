@@ -190,7 +190,6 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Initialized the IntentFilter listener for BluetoothAdapter.ACTION_SCAN_MODE_CHANGED.
-     * TODO consider changing this method to update some view rather than a toast.
      */
     public void setupDiscoverableListener() {
         Log.d(LOG_TAG, "setupDiscoverableListener");
@@ -220,9 +219,6 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * This is the default callback function for when a spawned intent finishes and returns.
-     * @param requestCode - code representing the type of request this intent was for.
-     * @param resultCode - code representing if this intent returns successfully or not.
-     * @param data - TODO look up what this passed param is
      */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {

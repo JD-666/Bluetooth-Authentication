@@ -81,7 +81,6 @@ public class MsgListAdapter extends RecyclerView.Adapter<MsgListAdapter.DeviceVi
 
         @Override
         public void onClick(View view) {
-            // TODO pass device info so ChatActivity can connect
             deviceItemView.setText("Clicked!" + deviceItemView.getText());
         }
 

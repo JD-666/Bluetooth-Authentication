@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Bluetooth1</string>
+    <string name="app_name">Authy</string>
     <string name="bt_on_btn_txt">Bluetooth on</string>
     <string name="bt_off_btn_text">Bluetooth off</string>
     <string name="paired_devices_btn_text">Show paired devices</string>
@@ -15,11 +15,13 @@
     <string name="be_server_btn_txt">Server</string>
     <string name="be_client_btn_txt">Client</string>
     <string name="conn_status_text">connection status</string>
-    <string name="rssi_val_txt">99</string>
-    <string name="dst_val_txt">99</string>
+    <string name="rssi_val_txt">-</string>
+    <string name="dst_val_txt">-</string>
     <string name="rssi_activity_btn_txt">Proximity Authentication</string>
     <string name="dst_textview_txt">distance est.</string>
     <string name="rssi_textview_txt">channel RSSI</string>
     <string name="resource_locked">locked</string>
     <string name="resource_unlocked">unlocked</string>
+    <string name="RssiActivityName">Proximity Authentication</string>
+    <string name="ChatActivityName">Bluetooth Messaging</string>
 </resources>
