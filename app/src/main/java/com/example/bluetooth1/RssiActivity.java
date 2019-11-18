@@ -239,7 +239,16 @@ public class RssiActivity extends AppCompatActivity {
 
         int subArraySize = 400;
 
-        //sendReceiveThread.writeInt(2);
+        sendReceiveThread.writeInt(2);
+        sendReceiveThread.writeInt(imageBytes.length);
+
+        // Then send the image
+        for (int i = 0; i < imageBytes.length; i += subArraySize) {
+            byte[] tempArray;
+            tempArray = Arrays.copyOfRange(imageBytes, i, Math.min(imageBytes.length, i+subArraySize));
+            sendReceiveThread.write(tempArray);
+        }
+        /*
         // First send the number of bytes in the image so client knows how much to read
         sendReceiveThread.write(String.valueOf(imageBytes.length).getBytes());
         //sendReceiveThread.writeInt(imageBytes.length);
@@ -250,6 +259,8 @@ public class RssiActivity extends AppCompatActivity {
             tempArray = Arrays.copyOfRange(imageBytes, i, Math.min(imageBytes.length, i+subArraySize));
             sendReceiveThread.write(tempArray);
         }
+
+         */
 
 
     }
@@ -511,6 +522,13 @@ public class RssiActivity extends AppCompatActivity {
                     try {
                         // TODO try sending and receiving an Int... if we can get that to work..
                         // Read image size (first message)
+                        int type = dataInputStream.readInt();
+                        Log.d(LOG_TAG, "type: " + type);
+                        totalBytes = dataInputStream.readInt();
+                        Log.d(LOG_TAG, "totalBytes " + totalBytes);
+                        buffer = new byte[totalBytes];
+                        waitingForImage = false;
+                        /*
                         byte[] temp = new byte[dataInputStream.available()];
                         if (dataInputStream.read(temp) > 0) {
                             totalBytes = Integer.parseInt(new String(temp, StandardCharsets.UTF_8));
@@ -518,6 +536,8 @@ public class RssiActivity extends AppCompatActivity {
                             buffer = new byte[totalBytes];
                             waitingForImage = false;
                         }
+
+                         */
                     } catch (IOException e) {
                         Message message = Message.obtain();
                         message.what = STATE_CONNECTION_FAILED;
