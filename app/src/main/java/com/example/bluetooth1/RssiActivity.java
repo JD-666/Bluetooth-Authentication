@@ -26,8 +26,12 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -224,7 +228,7 @@ public class RssiActivity extends AppCompatActivity {
         //msgs.add(m);
         //msgAdapter.notifyDataSetChanged();
         // TODO add some sort of code so they know this is a text and not an image
-        sendReceiveThread.write(txt.getBytes());
+        //sendReceiveThread.write(txt.getBytes());
     }
 
     public void sendImage() {
@@ -235,8 +239,10 @@ public class RssiActivity extends AppCompatActivity {
 
         int subArraySize = 400;
 
+        //sendReceiveThread.writeInt(2);
         // First send the number of bytes in the image so client knows how much to read
         sendReceiveThread.write(String.valueOf(imageBytes.length).getBytes());
+        //sendReceiveThread.writeInt(imageBytes.length);
 
         // Then send the image
         for (int i = 0; i < imageBytes.length; i += subArraySize) {
@@ -475,12 +481,16 @@ public class RssiActivity extends AppCompatActivity {
         private final BluetoothSocket btSocket;
         private InputStream inputStream;
         private OutputStream outputStream;
+        private DataInputStream dataInputStream;
+        private DataOutputStream dataOutputStream;
 
         public SendReceive(BluetoothSocket socket) {
             this.btSocket = socket;
             try {
                 this.inputStream = btSocket.getInputStream();
                 this.outputStream = btSocket.getOutputStream();
+                dataInputStream = new DataInputStream(new BufferedInputStream(inputStream));
+                dataOutputStream = new DataOutputStream(new BufferedOutputStream(outputStream));
             } catch (IOException e) {
                 Message message = Message.obtain();
                 message.what = STATE_CONNECTION_FAILED;
@@ -499,10 +509,12 @@ public class RssiActivity extends AppCompatActivity {
                 // TODO consider inputStream.read() to get message code, then process images vs text separately.
                 if (waitingForImage) {
                     try {
+                        // TODO try sending and receiving an Int... if we can get that to work..
                         // Read image size (first message)
-                        byte[] temp = new byte[inputStream.available()];
-                        if (inputStream.read(temp) > 0) {
+                        byte[] temp = new byte[dataInputStream.available()];
+                        if (dataInputStream.read(temp) > 0) {
                             totalBytes = Integer.parseInt(new String(temp, StandardCharsets.UTF_8));
+                            Log.d(LOG_TAG, "totalBytes: "+totalBytes);
                             buffer = new byte[totalBytes];
                             waitingForImage = false;
                         }
@@ -516,8 +528,8 @@ public class RssiActivity extends AppCompatActivity {
                 } else {
                     // We've read image size, now read that many bytes
                     try {
-                        byte[] data = new byte[inputStream.available()];
-                        int bytesRead = inputStream.read(data);
+                        byte[] data = new byte[dataInputStream.available()];
+                        int bytesRead = dataInputStream.read(data);
                         System.arraycopy(data, 0, buffer, index, bytesRead);
                         index = index + bytesRead;
                         if (index == totalBytes) {
@@ -538,8 +550,16 @@ public class RssiActivity extends AppCompatActivity {
         }
         public void write(byte[] bytes) {
             try {
-                outputStream.write(bytes);
-                outputStream.flush();
+                dataOutputStream.write(bytes);
+                dataOutputStream.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        public void writeInt(int i) {
+            try {
+                dataOutputStream.writeInt(i);
+                dataOutputStream.flush();
             } catch (IOException e) {
                 e.printStackTrace();
             }
