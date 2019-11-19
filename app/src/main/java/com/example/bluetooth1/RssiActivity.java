@@ -512,62 +512,52 @@ public class RssiActivity extends AppCompatActivity {
 
         // Receive messages loop
         public void run() {
-            byte[] buffer = new byte[1024];
-            int totalBytes = 0;
-            int index = 0;
             boolean waitingForImage = true;
+            int totalBytes = 0;
             while(true) {
                 // TODO consider inputStream.read() to get message code, then process images vs text separately.
-                if (waitingForImage) {
-                    try {
-                        // TODO try sending and receiving an Int... if we can get that to work..
-                        // Read image size (first message)
-                        int type = dataInputStream.readInt();
-                        Log.d(LOG_TAG, "type: " + type);
+                try {
+                    // TODO try sending and receiving an Int... if we can get that to work..
+                    // Read image size (first message)
+                    int type = dataInputStream.readInt();
+                    Log.d(LOG_TAG, "type: " + type);
+                    if (type == 2) {
                         totalBytes = dataInputStream.readInt();
                         Log.d(LOG_TAG, "totalBytes " + totalBytes);
-                        buffer = new byte[totalBytes];
-                        waitingForImage = false;
-                        /*
-                        byte[] temp = new byte[dataInputStream.available()];
-                        if (dataInputStream.read(temp) > 0) {
-                            totalBytes = Integer.parseInt(new String(temp, StandardCharsets.UTF_8));
-                            Log.d(LOG_TAG, "totalBytes: "+totalBytes);
-                            buffer = new byte[totalBytes];
-                            waitingForImage = false;
-                        }
-
-                         */
-                    } catch (IOException e) {
-                        Message message = Message.obtain();
-                        message.what = STATE_CONNECTION_FAILED;
-                        messageHandler.sendMessage(message);
-                        e.printStackTrace();
-                        break;
+                        processImage(totalBytes);
                     }
-                } else {
-                    // We've read image size, now read that many bytes
-                    try {
-                        byte[] data = new byte[dataInputStream.available()];
-                        int bytesRead = dataInputStream.read(data);
-                        System.arraycopy(data, 0, buffer, index, bytesRead);
-                        index = index + bytesRead;
-                        if (index == totalBytes) {
-                            messageHandler.obtainMessage(STATE_IMAGE_RECEIVED, totalBytes, -1, buffer).sendToTarget();
-                            // Reset flag to go back to waiting for image length message
-                            waitingForImage = true;
-                        }
-                    } catch (IOException e) {
-                        Message message = Message.obtain();
-                        message.what = STATE_CONNECTION_FAILED;
-                        messageHandler.sendMessage(message);
-                        e.printStackTrace();
-                        break;
-                    }
-
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    break;
                 }
             }
         }
+
+        private void processImage(int imageSize) {
+            byte[] buffer = new byte[imageSize];
+            try {
+                dataInputStream.readFully(buffer);
+                messageHandler.obtainMessage(STATE_IMAGE_RECEIVED, imageSize, -1, buffer).sendToTarget();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void processMessage() {
+            byte[] buffer = new byte[1024];
+            int bytes;
+            while(true) {
+                try {
+                    // read message on the socket.
+                    // send to handler so that main thread can obtain
+                    bytes = inputStream.read(buffer);
+                    messageHandler.obtainMessage(STATE_MESSAGE_RECEIVED, bytes, -1, buffer).sendToTarget();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
         public void write(byte[] bytes) {
             try {
                 dataOutputStream.write(bytes);
