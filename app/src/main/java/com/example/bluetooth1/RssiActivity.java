@@ -50,7 +50,7 @@ public class RssiActivity extends AppCompatActivity {
     private BluetoothAdapter myBtAdapter;
     private Set<BluetoothDevice> btDevices;
     private ArrayList<BluetoothDevice> pairedDevices = new ArrayList<>();
-    private int smoothedRssi;
+    private int smoothedRssi = -99;
     private double alpha = 0.8; // alpha smoothing coefficient
 
     // Views
@@ -64,7 +64,7 @@ public class RssiActivity extends AppCompatActivity {
     private ImageView imageView;
 
     // Flags
-    private boolean UNLOCKED = false; // keep track of when device becomes unlocked
+    private boolean LOCKED = true; // keep track of when device becomes unlocked
     private boolean CONNECTED = false; // Keep track of when we have a BT socket connection
 
     // Threads
@@ -77,8 +77,9 @@ public class RssiActivity extends AppCompatActivity {
     static final int STATE_CONNECTING = 2;
     static final int STATE_CONNECTED = 3;
     static final int STATE_CONNECTION_FAILED = 4;
-    static final int STATE_MESSAGE_RECEIVED = 5;
-    static final int STATE_IMAGE_RECEIVED = 6;
+    static final int STRING_MESSAGE = 5;
+    static final int IMAGE_MESSAGE = 6;
+    static final int RSSI_STR_MESSAGE = 7;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -188,27 +189,31 @@ public class RssiActivity extends AppCompatActivity {
         //btGatt = device.connectGatt(this, false, clientGattCallback);
     }
 
-    private void setDistanceView(int rssi) {
+    private int getDistanceFromRssi(int rssi) {
         // compute distance
         // TODO create a more advance algorithm based on those papers or some sort of calibration
         // Rolling average + calibration + bucketizing
-        String dst;
-        if (rssi > -5) {
-            dst = "<3m";
+        int dst;
+        if (rssi >= -1) {
+            dst = 0;
+        } else if (rssi > -3) {
+            dst = 1;
+        } else if (rssi > -5) {
+            dst = 3;
         } else if (rssi > -10) {
-            dst = "<5m";
+            dst = 5;
         } else if (rssi > -15) {
-            dst = "<8m";
+            dst = 8;
         } else if (rssi > -20) {
-            dst = "<10m";
+            dst = 10;
         } else if (rssi > -25) {
-            dst = "<12m";
+            dst = 12;
         } else if (rssi > -30) {
-            dst = "<14m";
+            dst = 14;
         } else {
-            dst = ">14m";
+            dst = 14;
         }
-        dstView.setText(dst);
+        return dst;
     }
 
     private void setResourceLabel(boolean unlocked) {
@@ -218,6 +223,14 @@ public class RssiActivity extends AppCompatActivity {
         } else {
             resourceLabel.setText(R.string.resource_locked);
             resourceLabel.setTextColor(ContextCompat.getColor(this, R.color.colorLocked));
+        }
+    }
+
+    private void setResourceLabel(String status) {
+        if (status.equals("Locked")) {
+            setResourceLabel(false);
+        } else if (status.equals("Unlocked")) {
+            setResourceLabel(true);
         }
     }
 
@@ -239,7 +252,7 @@ public class RssiActivity extends AppCompatActivity {
 
         int subArraySize = 400;
 
-        sendReceiveThread.writeInt(2);
+        sendReceiveThread.writeInt(IMAGE_MESSAGE);
         sendReceiveThread.writeInt(imageBytes.length);
 
         // Then send the image
@@ -248,21 +261,6 @@ public class RssiActivity extends AppCompatActivity {
             tempArray = Arrays.copyOfRange(imageBytes, i, Math.min(imageBytes.length, i+subArraySize));
             sendReceiveThread.write(tempArray);
         }
-        /*
-        // First send the number of bytes in the image so client knows how much to read
-        sendReceiveThread.write(String.valueOf(imageBytes.length).getBytes());
-        //sendReceiveThread.writeInt(imageBytes.length);
-
-        // Then send the image
-        for (int i = 0; i < imageBytes.length; i += subArraySize) {
-            byte[] tempArray;
-            tempArray = Arrays.copyOfRange(imageBytes, i, Math.min(imageBytes.length, i+subArraySize));
-            sendReceiveThread.write(tempArray);
-        }
-
-         */
-
-
     }
 
     @Override
@@ -308,53 +306,38 @@ public class RssiActivity extends AppCompatActivity {
                     setStatusDisconnected();
                     Log.d(LOG_TAG, "CONNECTION FAILED");
                     break;
-                case STATE_MESSAGE_RECEIVED:
+                case STRING_MESSAGE:
                     Log.d(LOG_TAG, "MESSAGE RECEIVED");
                     byte[] readBuff = (byte[]) msg.obj;
-                    // Message is received but we don't do anything with it.
+                    String tempMsg = new String(readBuff, 0, msg.arg1);
+                    Log.d(LOG_TAG, tempMsg);
                     break;
-                case STATE_IMAGE_RECEIVED:
+                case IMAGE_MESSAGE:
                     Log.d(LOG_TAG, "IMAGE RECEIVED");
                     byte[] buff = (byte[]) msg.obj; // All the image bytes
                     // 0 is starting arg1 is total bytes
                     Bitmap bitmap = BitmapFactory.decodeByteArray(buff, 0, msg.arg1);
                     imageView.setImageBitmap(bitmap);
                     break;
+                case RSSI_STR_MESSAGE:
+                    Log.d(LOG_TAG, "RSSI MSG RECEIVED");
+                    byte[] rBuff = (byte[]) msg.obj;
+                    String vals = new String(rBuff, 0, msg.arg1);
+                    String[] parts = vals.split(",");
+                    String rssi = parts[0];
+                    String dst = parts[1];
+                    String status = parts[2];
+                    Log.d(LOG_TAG, "rssi: "+rssi+". dst: "+dst+" status: "+status);
+
+                    rssiView.setText(rssi);
+                    dstView.setText(dst);
+                    setResourceLabel(status);
+
+                    break;
             }
             return true;
         }
     });
-    //----------------------------------------------------------------------------------------------
-    /**
-     * This is a callback for all Gatt activities on hte client side
-     */
-    private final BluetoothGattCallback clientGattCallback = new BluetoothGattCallback() {
-        @Override
-        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-            if(newState == BluetoothProfile.STATE_CONNECTED) {
-                TimerTask task = new TimerTask() {
-                    @Override
-                    public void run() {
-                        btGatt.readRemoteRssi();
-                    }
-                };
-                rssiTimer = new Timer();
-                rssiTimer.schedule(task, 500, 500);
-            }
-        }
-
-        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
-            Log.d(LOG_TAG, String.valueOf(rssi));
-            smoothedRssi = (int) ((smoothedRssi * alpha) + ((1 - alpha) * rssi));
-            setDistanceView(smoothedRssi);
-            rssiView.setText(String.valueOf(smoothedRssi));
-            if (smoothedRssi >= 0) {
-                setResourceLabel(true);
-            } else {
-                setResourceLabel(false);
-            }
-        }
-    };
 
     //----------------------------------------------------------------------------------------------
     /**
@@ -371,30 +354,43 @@ public class RssiActivity extends AppCompatActivity {
                     }
                 };
                 rssiTimer = new Timer();
-                rssiTimer.schedule(task, 500, 500);
+                rssiTimer.schedule(task, 1500, 1500);
             }
         }
 
         public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
             Log.d(LOG_TAG, String.valueOf(rssi));
             smoothedRssi = (int) ((smoothedRssi * alpha) + ((1 - alpha) * rssi));
-            setDistanceView(smoothedRssi);
+            int dst = getDistanceFromRssi(smoothedRssi);
+
+            dstView.setText(String.valueOf(dst));
             rssiView.setText(String.valueOf(smoothedRssi));
-            if (!UNLOCKED) { // If locked
-                if (smoothedRssi >= 0) {
+
+            if (smoothedRssi >= 0) {
+                if (LOCKED) { // If locked
+                    tellClientTheDistance(smoothedRssi, dst, "Unlocked");
                     setResourceLabel(true);
-                    UNLOCKED = true;
+                    LOCKED = false;
                     sendImage();
                     // Remove image from our screen after we send it
                     imageView.setImageResource(0);
                 }
+            } else {
+                if (LOCKED) {
+                    tellClientTheDistance(smoothedRssi, dst, "Locked");
+                }
             }
             // TODO when to reset back to locked? never?
+            // Maybe set a reset button?
         }
     };
 
+    private void tellClientTheDistance(int rssi, int distance, String status) {
+        String message = rssi+","+distance+","+status;
+        sendReceiveThread.writeInt(RSSI_STR_MESSAGE);
+        sendReceiveThread.write(message.getBytes());
+    }
 
-    //----------------------------------------------------------------------------------------------
     //----------------------------------------------------------------------------------------------
     private class ServerClass extends Thread {
         private BluetoothServerSocket serverSocket;
@@ -512,19 +508,20 @@ public class RssiActivity extends AppCompatActivity {
 
         // Receive messages loop
         public void run() {
-            boolean waitingForImage = true;
-            int totalBytes = 0;
+            int imageSize = 0;
             while(true) {
                 // TODO consider inputStream.read() to get message code, then process images vs text separately.
                 try {
-                    // TODO try sending and receiving an Int... if we can get that to work..
-                    // Read image size (first message)
+                    // Read the message type first
                     int type = dataInputStream.readInt();
                     Log.d(LOG_TAG, "type: " + type);
-                    if (type == 2) {
-                        totalBytes = dataInputStream.readInt();
-                        Log.d(LOG_TAG, "totalBytes " + totalBytes);
-                        processImage(totalBytes);
+                    if (type == IMAGE_MESSAGE) {
+                        // Read image size (second message)
+                        imageSize = dataInputStream.readInt();
+                        Log.d(LOG_TAG, "imageSize: " + imageSize);
+                        processImage(imageSize);
+                    } else if (type == STRING_MESSAGE || type == RSSI_STR_MESSAGE) {
+                        processMessage(type);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -537,24 +534,20 @@ public class RssiActivity extends AppCompatActivity {
             byte[] buffer = new byte[imageSize];
             try {
                 dataInputStream.readFully(buffer);
-                messageHandler.obtainMessage(STATE_IMAGE_RECEIVED, imageSize, -1, buffer).sendToTarget();
+                messageHandler.obtainMessage(IMAGE_MESSAGE, imageSize, -1, buffer).sendToTarget();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
 
-        private void processMessage() {
+        private void processMessage(int type) {
             byte[] buffer = new byte[1024];
             int bytes;
-            while(true) {
-                try {
-                    // read message on the socket.
-                    // send to handler so that main thread can obtain
-                    bytes = inputStream.read(buffer);
-                    messageHandler.obtainMessage(STATE_MESSAGE_RECEIVED, bytes, -1, buffer).sendToTarget();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+            try {
+                bytes = dataInputStream.read(buffer);
+                messageHandler.obtainMessage(type, bytes, -1, buffer).sendToTarget();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
 
