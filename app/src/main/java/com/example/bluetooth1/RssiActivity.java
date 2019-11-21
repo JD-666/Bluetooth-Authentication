@@ -172,8 +172,7 @@ public class RssiActivity extends AppCompatActivity {
         ServerClass serverChat = new ServerClass();
         serverChat.start();
         // Set image on screen then later delete it when image is sent
-        imageView.setImageDrawable(getResources().getDrawable(R.drawable.lanterns));
-        // TODO consider having the server constantly send messages to the client about it's RSSI
+        imageView.setImageDrawable(getResources().getDrawable(R.drawable.gmurobot));
     }
 
     public void startClientChat(BluetoothDevice device) {
@@ -182,11 +181,6 @@ public class RssiActivity extends AppCompatActivity {
         hideRecycler(); // remove devices list from display
         ClientClass client = new ClientClass(device);
         client.start();
-
-        // Initiate client RSSI callbacks
-        // TODO consider having the client NOT read RSSI, instead read messages from the server and display that
-
-        //btGatt = device.connectGatt(this, false, clientGattCallback);
     }
 
     private int getDistanceFromRssi(int rssi) {
@@ -234,28 +228,17 @@ public class RssiActivity extends AppCompatActivity {
         }
     }
 
-
-    public void sendTextMsg(String txt) {
-        //String m = String.valueOf(sendMsgView.getText());
-        //sendMsgView.setText("");
-        //msgs.add(m);
-        //msgAdapter.notifyDataSetChanged();
-        // TODO add some sort of code so they know this is a text and not an image
-        //sendReceiveThread.write(txt.getBytes());
-    }
-
     public void sendImage() {
-        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.lanterns);
+        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.gmurobot);
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 50, stream);
         byte[] imageBytes = stream.toByteArray();
 
-        int subArraySize = 400;
-
+        // Our protocol says first send: [int type] [int payloadSize] [bytes data]
         sendReceiveThread.writeInt(IMAGE_MESSAGE);
         sendReceiveThread.writeInt(imageBytes.length);
-
         // Then send the image
+        int subArraySize = 400;
         for (int i = 0; i < imageBytes.length; i += subArraySize) {
             byte[] tempArray;
             tempArray = Arrays.copyOfRange(imageBytes, i, Math.min(imageBytes.length, i+subArraySize));
@@ -354,7 +337,7 @@ public class RssiActivity extends AppCompatActivity {
                     }
                 };
                 rssiTimer = new Timer();
-                rssiTimer.schedule(task, 1500, 1500);
+                rssiTimer.schedule(task, 1000, 1000);
             }
         }
 
@@ -380,8 +363,7 @@ public class RssiActivity extends AppCompatActivity {
                     tellClientTheDistance(smoothedRssi, dst, "Locked");
                 }
             }
-            // TODO when to reset back to locked? never?
-            // Maybe set a reset button?
+            // TODO when to reset back to locked? never? Maybe a reset button..
         }
     };
 
@@ -479,10 +461,6 @@ public class RssiActivity extends AppCompatActivity {
 
     /**
      * This class handles socket connections for the bluetooth connection.
-     * Note we never call it's write message because we don't use the connection to send data.
-     * Instead we only maintain socket connections to keep the connection open, so we can
-     * Monitor the RSSI over the channel.
-     * // TODO maybe write
      */
     private class SendReceive extends Thread {
         private final BluetoothSocket btSocket;
@@ -510,7 +488,6 @@ public class RssiActivity extends AppCompatActivity {
         public void run() {
             int imageSize = 0;
             while(true) {
-                // TODO consider inputStream.read() to get message code, then process images vs text separately.
                 try {
                     // Read the message type first
                     int type = dataInputStream.readInt();

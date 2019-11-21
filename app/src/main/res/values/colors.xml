@@ -7,8 +7,8 @@
     <color name="colorLocked">@android:color/holo_red_dark</color>
     <color name="colorUnlocked">@android:color/holo_green_dark</color>
 
-    <color name="AuthyPrimary">#f4131e</color>
-    <color name="AuthyPrimaryDark">#135af4</color>
-    <color name="AuthyPrimaryLight">#00574B</color>
-    <color name="AuthyAccent">#D81B60</color>
+    <color name="AuthyPrimary">#2979FF</color>
+    <color name="AuthyPrimaryDark">#3D5AFE</color>
+    <color name="AuthyPrimaryLight">#26C6DA</color>
+    <color name="AuthyAccent">#f4131e</color>
 </resources>
