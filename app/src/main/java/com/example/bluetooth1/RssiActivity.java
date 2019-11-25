@@ -22,20 +22,17 @@ import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Set;
@@ -45,13 +42,18 @@ import java.util.TimerTask;
 public class RssiActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = RssiActivity.class.getSimpleName();
+    private static final int S10_TX_PWR = -6; // This is S10 txpwr. Used when Pixel is server
+    private static final int PIXEL_TX_PWR = 14; // This is pixel txpwr. Used when S10 is server
+    private static final String S10_ADDRESS = "A8:2B:B9:A8:90:9B";
+    private static final String PIXEL_ADDRESS = "AC:37:43:BB:CA:30";
 
     // Statefull attributes needed
     private BluetoothAdapter myBtAdapter;
     private Set<BluetoothDevice> btDevices;
     private ArrayList<BluetoothDevice> pairedDevices = new ArrayList<>();
     private int smoothedRssi = -99;
-    private double alpha = 0.8; // alpha smoothing coefficient
+    private double alpha = 0.7; // alpha smoothing coefficient
+    private int txPwr = S10_TX_PWR; // default
 
     // Views
     private RecyclerView mRecyclerView;
@@ -183,32 +185,26 @@ public class RssiActivity extends AppCompatActivity {
         client.start();
     }
 
-    private int getDistanceFromRssi(int rssi) {
-        // compute distance
-        // TODO create a more advance algorithm based on those papers or some sort of calibration
-        // Rolling average + calibration + bucketizing
-        int dst;
-        if (rssi >= -1) {
-            dst = 0;
-        } else if (rssi > -3) {
-            dst = 1;
-        } else if (rssi > -5) {
-            dst = 3;
-        } else if (rssi > -10) {
-            dst = 5;
-        } else if (rssi > -15) {
-            dst = 8;
-        } else if (rssi > -20) {
-            dst = 10;
-        } else if (rssi > -25) {
-            dst = 12;
-        } else if (rssi > -30) {
-            dst = 14;
-        } else {
-            dst = 14;
-        }
-        return dst;
+
+
+    double getDistance(int rssi, double txPwr) {
+         // RSSI = TxPower - 10 * n * lg(d)
+         // n = 2 (in free space)
+         // d = 10 ^ ((TxPower - RSSI) / (10 * n))
+        int n = 2;
+        return Math.pow(10d, (txPwr - rssi) / (10 * n));
     }
+
+    double getTxPwr(double distance, int rssi) {
+        int n = 2;
+        return rssi + (10 * n * Math.log10(distance));
+    }
+
+    double getRssi(double distance, double txpwr) {
+        int n = 2;
+        return txpwr - (10 * n * Math.log10(distance));
+    }
+
 
     private void setResourceLabel(boolean unlocked) {
         if (unlocked) {
@@ -344,9 +340,9 @@ public class RssiActivity extends AppCompatActivity {
         public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
             Log.d(LOG_TAG, String.valueOf(rssi));
             smoothedRssi = (int) ((smoothedRssi * alpha) + ((1 - alpha) * rssi));
-            int dst = getDistanceFromRssi(smoothedRssi);
-
-            dstView.setText(String.valueOf(dst));
+            //int dst = getDistanceFromRssi(smoothedRssi);
+            double dst = getDistance(smoothedRssi, txPwr);
+            dstView.setText(""+String.format("%.2f", dst));
             rssiView.setText(String.valueOf(smoothedRssi));
 
             if (smoothedRssi >= 0) {
@@ -367,8 +363,8 @@ public class RssiActivity extends AppCompatActivity {
         }
     };
 
-    private void tellClientTheDistance(int rssi, int distance, String status) {
-        String message = rssi+","+distance+","+status;
+    private void tellClientTheDistance(int rssi, double distance, String status) {
+        String message = rssi+","+String.format("%.2f", distance)+","+status;
         sendReceiveThread.writeInt(RSSI_STR_MESSAGE);
         sendReceiveThread.write(message.getBytes());
     }
@@ -410,17 +406,26 @@ public class RssiActivity extends AppCompatActivity {
                     message.what = STATE_CONNECTED; // look at video 10/11
                     messageHandler.sendMessage(message);
 
-                    // Connect the communicatino thread
+                    // Connect the communication thread
                     sendReceiveThread = new SendReceive(socket);
                     sendReceiveThread.start();
 
-                    // Connect the RSSI callback
+                    // Set txPwr variable based on who the client is.
                     remoteDevice = socket.getRemoteDevice();
+                    if (remoteDevice.getAddress().equals(PIXEL_ADDRESS)) {
+                        txPwr = PIXEL_TX_PWR;
+                    } else if (remoteDevice.getAddress().equals(S10_ADDRESS)) {
+                        txPwr = S10_TX_PWR;
+                    }
+                    Log.d(LOG_TAG,"remote device = " + remoteDevice.getAddress());
+
+                    // Connect the RSSI callback
                     btGatt = remoteDevice.connectGatt(getApplicationContext(), false, serverGattCallback);
                     break;
                 }
             }
         }
+
     }
 
     //----------------------------------------------------------------------------------------------
@@ -546,7 +551,5 @@ public class RssiActivity extends AppCompatActivity {
         }
     }
     //----------------------------------------------------------------------------------------------
-
-
 
 }
